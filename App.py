@@ -1,7 +1,7 @@
-from flask import Flask, render_template, jsonify, redirect
+from flask import Flask, render_template, redirect
 from flask_pymongo import PyMongo
 import Scrape_mars
-import json
+
 
 # create instance of Flask app
 
@@ -16,23 +16,17 @@ def index():
     mars = mongo.db.mars.find_one()
     return render_template("index.html", mars=mars)
 
+# Creating Scrape route, updating mongo data base
+
+
 @app.route("/scrape")
 def scrape():
     mars = mongo.db.mars
-    mars_data, mars_hemisphere = Scrape_mars.scrape()
-    mars_hemi = mongo.db.mars_hemi
-    # records = json.loads(mars_data.T.to_json()).values()
-    # db.myCollection.insert(records)
-    # mars.update(
-    #     {}, mars_data.to_dict('records'),
-    #     upsert=True
-    #     )
-    mongo.db.mars.drop()
-    mongo.db.mars_hemi.drop()
-    mars.insert_many(mars_data.to_dict('records'))
-    mongo.db.mars_hemi.drop()
-    mars_hemi.insert_many(mars_hemisphere)
-
+    data = Scrape_mars.scrape()
+    mars.update(
+        {}, data, upsert=True
+    )
+    
 
     return redirect("http://localhost:5000/", code=302)
 

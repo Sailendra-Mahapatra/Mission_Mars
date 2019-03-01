@@ -35,17 +35,11 @@ def scrape():
 # Find the latest Mars news.
 
     article = bsoup.find("div", class_="list_text")
-    news_p = bsoup.find("div", class_="article_teaser_body").text
-    news_title = article.find("div", class_="content_title").text
+    news_p = bsoup.find('div', class_='rollover_description_inner').text
+    news_title = bsoup.find("div", class_="content_title").text
     news_date = article.find("div", class_="list_date").text
 
-# Adding date, title & summary to dictionary
-
-    mars_data["news_date"] = news_date
-    mars_data["news_title"] = news_title
-    mars_data["summary"] = news_p
-
-# While chromedriver open, going to JPL's Featured Space Image page
+# Accessing JPL's Featured Space Image page
 
     url2 = "https://www.jpl.nasa.gov/spaceimages/?search=&category=Mars"
     browser.visit(url2)
@@ -59,10 +53,6 @@ def scrape():
     img_url = "https://jpl.nasa.gov"+image
     featured_image_url = img_url
 
-# Adding the featured image url to the dictionary
-
-    mars_data["featured_image_url"] = featured_image_url
-
 
 # - From the [Mars Weather twitter](https://twitter.com/marswxreport?lang=en) account scrape the latest Mars weather tweet from the page.
 # - Save the tweet text for the weather report.
@@ -71,30 +61,33 @@ def scrape():
     twt_url = 'https://twitter.com/marswxreport?lang=en'
 
     browser.visit(twt_url)
-    html = browser.html
-    soup = bs(html, 'html.parser')
-    twt = soup.find('p', class_="TweetTextSize TweetTextSize--normal js-tweet-text tweet-text").text
-    twt = twt.replace('pic.twitter.com/1msjBvhiu7','')
+    new_html = browser.html
+    bsoup = bs(new_html, 'html.parser')
+    twt_rslt = bsoup.find_all('p', class_="TweetTextSize TweetTextSize--normal js-tweet-text tweet-text")
+    
+# Acessing next tweet from the twitter url
 
-# Adding the weather data to dictionary
+    twt_weather = twt_rslt[1].text
+    twt_weather_twt = twt_weather.replace('pic.twitter.com/WlR4gr8gpC','')
 
-    mars_data["mars_weather"] = twt
+
+# Adding the weather data 
+
+    mars_weather = twt_weather_twt
 
 # mars facts
 
     url3 = "https://space-facts.com/mars/"
     browser.visit(url3)
 
+# Creating data frame
+
     grab = pd.read_html(url3)
-    mars_data = pd.DataFrame(grab[0])
-    mars_data.columns = ['Mars','Data']
-    mars_table = mars_data.set_index("Mars")
-    marsdata = mars_table.to_html(classes='marsdata')
-    marsdata = marsdata.replace('\n', ' ')
-
-# Add the Mars facts table to the dictionary
-
-    mars_data["mars_table"] = marsdata
+    fact_df = pd.DataFrame(grab[0])
+    fact_df = fact_df.rename(columns={0:'Description',1: 'Values'})
+    fact_df = fact_df.set_index('Description')
+    df_to_html = fact_df.to_html(classes='mars_scrape_info')
+    df_to_html = df_to_html.replace("\n"," ")
 
 
 # Visit the USGS Astogeology site and scrape pictures of the hemispheres
@@ -103,7 +96,8 @@ def scrape():
 
     new_html = browser.html
     bsoup = bs(new_html, 'html.parser')
-    mars_hemisphere=[]
+    
+    image_mars = []
 
     for item in range(4):
         time.sleep(1)
@@ -114,14 +108,22 @@ def scrape():
         newContent = bsoup.find("img", class_="wide-image")["src"]
         img_title = bsoup.find("h2", class_="title").text
         img_url = 'https://astrogeology.usgs.gov'+ newContent
-        dict_list = {"title":img_title,"img_url":img_url}
-        mars_hemisphere.append(dict_list)
+        img_dict = {"title":img_title,"img_url":img_url}
+        image_mars.append(img_dict)
         browser.back()
     
-#print(mars_hemisphere)
 
 # Adding to dictionary
 
-    # mars_data["mars_hemis"] = mars_hemisphere
-# Return the dictionary
-    return mars_data, mars_hemisphere
+    mars_data = {
+        'News_Title': news_title,
+        'News_Heading': news_p,
+        'Feature_Image': featured_image_url,
+        'Weather': mars_weather,
+        'Facts': df_to_html,
+        'Hemisphere': image_mars
+    }
+
+    browser.quit()
+    
+    return mars_data
